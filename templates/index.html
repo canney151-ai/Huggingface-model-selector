@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GGUF Model Downloader</title>
+<style>
+:root {
+  --bg:        #0d1117;
+  --bg2:       #161b22;
+  --bg3:       #21262d;
+  --bg4:       #2d333b;
+  --border:    #30363d;
+  --text:      #c9d1d9;
+  --text2:     #8b949e;
+  --text3:     #6e7681;
+  --accent:    #58a6ff;
+  --accent2:   #1f6feb;
+  --green:     #3fb950;
+  --yellow:    #d29922;
+  --red:       #f85149;
+  --purple:    #bc8cff;
+  --orange:    #e3b341;
+  --radius:    8px;
+  --radius2:   12px;
+  font-size:   15px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ──────────────────────────────────────── */
+header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.logo span { color: var(--accent); }
+nav { display: flex; gap: 4px; }
+nav button {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  transition: all .15s;
+}
+nav button:hover { background: var(--bg3); color: var(--text); }
+nav button.active { background: var(--bg3); color: var(--accent); }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.badge {
+  background: var(--accent2);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+.badge.hidden { display: none; }
+
+/* ── Main Layout ─────────────────────────────────── */
+main { flex: 1; padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Search bar ──────────────────────────────────── */
+.search-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.search-wrap {
+  flex: 1;
+  position: relative;
+}
+.search-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text3);
+  pointer-events: none;
+}
+input[type=text], input[type=password] {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.95rem;
+  padding: 9px 14px;
+  width: 100%;
+  transition: border-color .15s;
+  outline: none;
+}
+input[type=text]:focus, input[type=password]:focus {
+  border-color: var(--accent2);
+}
+.search-wrap input { padding-left: 38px; }
+.btn {
+  background: var(--accent2);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 9px 18px;
+  transition: all .15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn:hover { background: var(--accent); }
+.btn.secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn.secondary:hover { background: var(--bg4); }
+.btn.danger { background: #6e1c1c; color: #fca5a5; border: 1px solid #7f1d1d; }
+.btn.danger:hover { background: #7f1d1d; }
+.btn.sm { padding: 5px 12px; font-size: 0.83rem; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Model Grid ──────────────────────────────────── */
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.model-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 16px;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.model-card:hover {
+  border-color: var(--accent2);
+  background: var(--bg3);
+  transform: translateY(-1px);
+}
+.model-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+  line-height: 1.4;
+}
+.model-name span { color: var(--accent); }
+.model-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text2);
+  font-size: 0.75rem;
+  padding: 2px 7px;
+}
+.tag.pipeline { background: #1c2d3a; border-color: #1f4566; color: #79c0ff; }
+.model-stats {
+  display: flex;
+  gap: 14px;
+  color: var(--text3);
+  font-size: 0.8rem;
+}
+.model-stats span { display: flex; align-items: center; gap: 4px; }
+
+/* ── Pagination ──────────────────────────────────── */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  color: var(--text2);
+  font-size: 0.9rem;
+}
+
+/* ── Modal ───────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px 16px;
+  overflow-y: auto;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  width: 100%;
+  max-width: 740px;
+  padding: 24px;
+  position: relative;
+}
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.modal-title { font-size: 1.05rem; font-weight: 600; word-break: break-all; }
+.modal-title a { color: var(--accent); text-decoration: none; }
+.modal-title a:hover { text-decoration: underline; }
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.close-btn:hover { background: var(--bg3); color: var(--text); }
+
+/* ── File List ───────────────────────────────────── */
+.file-list { display: flex; flex-direction: column; gap: 8px; }
+.file-row {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.file-row.recommended { border-color: #1f4566; }
+.file-info { flex: 1; min-width: 0; }
+.file-name {
+  font-size: 0.85rem;
+  color: var(--text);
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+.file-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.quant-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--bg4);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.quant-badge.rec {
+  background: #0d2840;
+  color: #58a6ff;
+  border-color: #1f4566;
+}
+.size-text {
+  font-size: 0.8rem;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.rec-label {
+  font-size: 0.7rem;
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* ── Progress ────────────────────────────────────── */
+.progress-bar-wrap {
+  background: var(--bg3);
+  border-radius: 999px;
+  height: 6px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.progress-bar {
+  background: var(--accent2);
+  height: 100%;
+  border-radius: 999px;
+  transition: width .3s;
+}
+.progress-bar.complete { background: var(--green); }
+.progress-bar.error { background: var(--red); }
+
+/* ── Downloads Tab ───────────────────────────────── */
+.download-list { display: flex; flex-direction: column; gap: 10px; }
+.dl-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 16px;
+}
+.dl-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.dl-name { font-size: 0.9rem; font-weight: 600; word-break: break-all; }
+.dl-model { font-size: 0.8rem; color: var(--text2); margin-top: 2px; }
+.dl-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.dl-status.downloading { background: #0d2840; color: var(--accent); }
+.dl-status.complete { background: #0d2b19; color: var(--green); }
+.dl-status.error { background: #2b0d0d; color: var(--red); }
+.dl-status.queued, .dl-status.connecting { background: var(--bg3); color: var(--text2); }
+.dl-status.cancelled { background: var(--bg3); color: var(--text3); }
+.dl-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.dl-stats { font-size: 0.8rem; color: var(--text2); }
+
+/* ── My Models Tab ───────────────────────────────── */
+.models-table {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+th {
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+.path-text {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: var(--text2);
+}
+
+/* ── Settings Panel ──────────────────────────────── */
+.settings-form {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 24px;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+label { font-size: 0.85rem; font-weight: 600; color: var(--text2); }
+.field-hint { font-size: 0.8rem; color: var(--text3); }
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+.alert.info { background: #0d2840; border: 1px solid #1f4566; color: #79c0ff; }
+.alert.success { background: #0d2b19; border: 1px solid #1a5233; color: #56d364; }
+.alert.error-msg { background: #2b0d0d; border: 1px solid #6e1c1c; color: #fca5a5; }
+
+/* ── Loading / Empty ─────────────────────────────── */
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.skeleton {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 16px;
+  height: 120px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: .6; }
+  50% { opacity: .3; }
+}
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text2);
+}
+.empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty h3 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+.empty p { font-size: 0.875rem; color: var(--text2); }
+
+/* ── Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+/* ── Misc ────────────────────────────────────────── */
+.vram-note {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vram-note strong { color: var(--green); }
+.modal-loading { text-align: center; padding: 40px; color: var(--text2); }
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    &#x2B1B; <span>GGUF</span>&nbsp;Downloader
+  </div>
+  <nav>
+    <button class="active" onclick="showTab('browse', this)">Browse</button>
+    <button onclick="showTab('downloads', this)">
+      Downloads <span id="dl-badge" class="badge hidden">0</span>
+    </button>
+    <button onclick="showTab('models', this)">My Models</button>
+    <button onclick="showTab('settings', this)">Settings</button>
+  </nav>
+  <div class="header-right">
+    <span style="font-size:0.78rem;color:var(--text3)">AMD Strix Halo &bull; 96 GB</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Browse Tab ───────────────────────────── -->
+  <div id="tab-browse" class="tab-content active">
+    <div class="search-bar">
+      <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search GGUF models (e.g. llama, qwen, mistral…)" autocomplete="off">
+      </div>
+      <button class="btn" onclick="doSearch()">Search</button>
+    </div>
+
+    <div class="vram-note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Showing only models with GGUF files that fit in your <strong>96 GB</strong> unified memory (≤ 88 GB per file). Files over that are hidden.
+    </div>
+
+    <div id="model-grid" class="model-grid"></div>
+    <div id="pagination" class="pagination" style="display:none">
+      <button class="btn secondary sm" id="prev-btn" onclick="changePage(-1)">← Prev</button>
+      <span id="page-info"></span>
+      <button class="btn secondary sm" id="next-btn" onclick="changePage(1)">Next →</button>
+    </div>
+  </div>
+
+  <!-- ── Downloads Tab ────────────────────────── -->
+  <div id="tab-downloads" class="tab-content">
+    <div class="section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Active Downloads
+    </div>
+    <div id="download-list" class="download-list">
+      <div class="empty"><div class="empty-icon">📭</div><h3>No downloads</h3><p>Start a download from the Browse tab.</p></div>
+    </div>
+  </div>
+
+  <!-- ── My Models Tab ────────────────────────── -->
+  <div id="tab-models" class="tab-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        Downloaded Models
+      </div>
+      <button class="btn secondary sm" onclick="loadMyModels()">⟳ Refresh</button>
+    </div>
+    <div id="models-path" style="font-size:0.8rem;color:var(--text2);margin-bottom:12px"></div>
+    <div id="models-container"></div>
+  </div>
+
+  <!-- ── Settings Tab ─────────────────────────── -->
+  <div id="tab-settings" class="tab-content">
+    <div class="section-title">Settings</div>
+    <div class="settings-form">
+      <div class="field">
+        <label for="s-models-dir">Models Directory</label>
+        <input type="text" id="s-models-dir" placeholder="e.g. /home/user/models">
+        <div class="field-hint">Where GGUF files are saved. This is the path you pass to <code>llama-cli -m &lt;path&gt;</code>.</div>
+      </div>
+      <div class="field">
+        <label for="s-token">HuggingFace Token <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+        <input type="password" id="s-token" placeholder="hf_…">
+        <div class="field-hint">Required only for gated/private models. Get one at huggingface.co/settings/tokens</div>
+      </div>
+      <div id="settings-msg"></div>
+      <button class="btn" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Model Files Modal ──────────────────────────── -->
+<div id="file-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title"></div>
+        <div style="font-size:0.8rem;color:var(--text2);margin-top:4px" id="modal-subtitle"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let currentPage = 1;
+let currentQuery = '';
+let hasMore = false;
+let activeDownloads = {};
+let dlPollInterval = null;
+let modalFiles = [];
+let modalModelId = '';
+let modalInterval = null;
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'models') loadMyModels();
+  if (name === 'settings') loadSettings();
+  if (name === 'downloads') renderDownloads();
+}
+
+// ── Search / Browse ───────────────────────────────────────────────────────────
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+function doSearch() {
+  currentQuery = document.getElementById('search-input').value.trim();
+  currentPage = 1;
+  loadModels();
+}
+
+async function loadModels() {
+  const grid = document.getElementById('model-grid');
+  grid.innerHTML = '';
+  document.getElementById('pagination').style.display = 'none';
+
+  // Skeleton
+  const skels = document.createElement('div');
+  skels.className = 'loading-grid';
+  skels.style.gridColumn = '1/-1';
+  for (let i = 0; i < 12; i++) {
+    const s = document.createElement('div');
+    s.className = 'skeleton';
+    skels.appendChild(s);
+  }
+  grid.appendChild(skels);
+
+  try {
+    const params = new URLSearchParams({ page: currentPage });
+    if (currentQuery) params.set('q', currentQuery);
+    const resp = await fetch('/api/models?' + params);
+    const data = await resp.json();
+
+    grid.innerHTML = '';
+    if (data.error) { showError(grid, data.error); return; }
+    if (!data.models.length) {
+      showEmpty(grid, 'No models found', 'Try a different search term.');
+      return;
+    }
+
+    hasMore = data.has_more;
+    data.models.forEach(m => grid.appendChild(makeModelCard(m)));
+
+    // Pagination
+    const pg = document.getElementById('pagination');
+    if (currentPage > 1 || hasMore) {
+      pg.style.display = 'flex';
+      document.getElementById('page-info').textContent = `Page ${currentPage}`;
+      document.getElementById('prev-btn').disabled = currentPage <= 1;
+      document.getElementById('next-btn').disabled = !hasMore;
+    }
+  } catch (e) {
+    showError(grid, 'Failed to load models: ' + e.message);
+  }
+}
+
+function changePage(dir) {
+  currentPage = Math.max(1, currentPage + dir);
+  loadModels();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function makeModelCard(m) {
+  const card = document.createElement('div');
+  card.className = 'model-card';
+  card.onclick = () => openModel(m.id);
+
+  const parts = m.id.split('/');
+  const owner = parts[0] || '';
+  const name = parts.slice(1).join('/') || m.id;
+
+  const fmtNum = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : n;
+
+  card.innerHTML = `
+    <div class="model-name"><span>${escHtml(owner)}/</span>${escHtml(name)}</div>
+    <div class="model-meta">
+      ${m.pipeline_tag ? `<span class="tag pipeline">${escHtml(m.pipeline_tag)}</span>` : ''}
+    </div>
+    <div class="model-stats">
+      <span>⬇ ${fmtNum(m.downloads || 0)}</span>
+      <span>♥ ${fmtNum(m.likes || 0)}</span>
+      ${m.lastModified ? `<span>${new Date(m.lastModified).toLocaleDateString()}</span>` : ''}
+    </div>
+  `;
+  return card;
+}
+
+// ── Model Files Modal ─────────────────────────────────────────────────────────
+async function openModel(modelId) {
+  const modal = document.getElementById('file-modal');
+  const body = document.getElementById('modal-body');
+  const title = document.getElementById('modal-title');
+  const subtitle = document.getElementById('modal-subtitle');
+
+  title.innerHTML = `<a href="https://huggingface.co/${escHtml(modelId)}" target="_blank" rel="noopener">${escHtml(modelId)}</a>`;
+  subtitle.textContent = '';
+  body.innerHTML = '<div class="modal-loading">Loading available files…</div>';
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const resp = await fetch(`/api/models/${encodeURIComponent(modelId)}/files`);
+    const data = await resp.json();
+
+    if (data.error) { body.innerHTML = `<div class="alert error-msg">${escHtml(data.error)}</div>`; return; }
+
+    const files = data.files;
+    if (!files.length) {
+      body.innerHTML = '<div class="alert info">No GGUF files found that fit within 88 GB. Files over that limit are hidden.</div>';
+      subtitle.textContent = 'No compatible files found';
+      return;
+    }
+
+    subtitle.textContent = `${files.length} compatible file${files.length !== 1 ? 's' : ''} · all fit in 96 GB`;
+
+    const list = document.createElement('div');
+    list.className = 'file-list';
+
+    files.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'file-row' + (f.recommended ? ' recommended' : '');
+
+      const sizeStr = f.size_gb != null ? `${f.size_gb} GB` : 'Unknown size';
+
+      row.innerHTML = `
+        <div class="file-info">
+          <div class="file-name">${escHtml(f.filename)}</div>
+          <div class="file-badges">
+            <span class="quant-badge ${f.recommended ? 'rec' : ''}">${escHtml(f.quantization)}</span>
+            ${f.recommended ? '<span class="rec-label">✓ Recommended</span>' : ''}
+          </div>
+        </div>
+        <div class="size-text">${sizeStr}</div>
+        <div id="dl-btn-${CSS.escape(f.filename)}"></div>
+      `;
+
+      list.appendChild(row);
+    });
+
+    body.innerHTML = '';
+    body.appendChild(list);
+
+    // Render buttons now that rows are in the DOM
+    files.forEach(f => renderFileButton(f, modelId, `dl-btn-${CSS.escape(f.filename)}`));
+
+    // Poll to keep progress bars updated while modal is open
+    modalFiles = files;
+    modalModelId = modelId;
+    if (modalInterval) clearInterval(modalInterval);
+    modalInterval = setInterval(() => {
+      modalFiles.forEach(f => renderFileButton(f, modalModelId, `dl-btn-${CSS.escape(f.filename)}`));
+    }, 600);
+
+  } catch (e) {
+    body.innerHTML = `<div class="alert error-msg">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderFileButton(f, modelId, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const dl = Object.values(activeDownloads).find(d => d.filename === f.filename);
+
+  if (dl && dl.status === 'complete') {
+    container.innerHTML = '<span style="color:var(--green);font-size:0.85rem;font-weight:600;white-space:nowrap">✓ Saved</span>';
+  } else if (dl && dl.status === 'error') {
+    container.innerHTML = `<span style="color:var(--red);font-size:0.8rem" title="${escHtml(dl.error||'')}">✗ Error</span>`;
+  } else if (dl && ['queued','connecting','downloading'].includes(dl.status)) {
+    const pct = dl.total > 0 ? Math.round((dl.progress / dl.total) * 100) : 0;
+    const speed = dl.speed_bps > 0 ? fmtBytes(dl.speed_bps) + '/s' : dl.status;
+    container.innerHTML = `
+      <div style="width:150px">
+        <div style="display:flex;justify-content:space-between;font-size:0.73rem;color:var(--text2);margin-bottom:4px">
+          <span style="font-weight:600">${pct}%</span><span>${escHtml(speed)}</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" style="width:${pct}%"></div>
+        </div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:3px;text-align:right">
+          ${dl.progress > 0 ? fmtBytes(dl.progress) + (dl.total > 0 ? ' / ' + fmtBytes(dl.total) : '') : ''}
+        </div>
+      </div>`;
+  } else {
+    const btn = document.createElement('button');
+    btn.className = 'btn sm';
+    btn.innerHTML = '⬇ Download';
+    btn.onclick = () => startDownload(modelId, f.filename, btn);
+    container.innerHTML = '';
+    container.appendChild(btn);
+  }
+}
+
+async function startDownload(modelId, filename, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+
+  try {
+    const resp = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_id: modelId, filename })
+    });
+    const data = await resp.json();
+
+    if (resp.status === 409) {
+      btn.textContent = '✓ Exists';
+      return;
+    }
+    if (data.error) {
+      btn.textContent = 'Error';
+      btn.disabled = false;
+      alert('Download error: ' + data.error);
+      return;
+    }
+
+    btn.textContent = 'Downloading…';
+    trackDownload(data.task_id, filename);
+    updateDlBadge();
+
+  } catch (e) {
+    btn.textContent = 'Error';
+    btn.disabled = false;
+  }
+}
+
+// ── Download Tracking ─────────────────────────────────────────────────────────
+function trackDownload(taskId, filename) {
+  const es = new EventSource(`/api/download/progress/${taskId}`);
+  es.onmessage = e => {
+    const info = JSON.parse(e.data);
+    activeDownloads[taskId] = info;
+    renderDownloads();
+    updateDlBadge();
+    // Immediately refresh any matching button in the open modal
+    if (modalFiles.length) {
+      const f = modalFiles.find(f => f.filename === info.filename);
+      if (f) renderFileButton(f, modalModelId, `dl-btn-${CSS.escape(f.filename)}`);
+    }
+    if (['complete', 'error', 'cancelled'].includes(info.status)) {
+      es.close();
+    }
+  };
+  es.onerror = () => es.close();
+}
+
+function updateDlBadge() {
+  const active = Object.values(activeDownloads).filter(d =>
+    ['queued','connecting','downloading'].includes(d.status)
+  ).length;
+  const badge = document.getElementById('dl-badge');
+  badge.textContent = active;
+  badge.classList.toggle('hidden', active === 0);
+}
+
+function renderDownloads() {
+  const list = document.getElementById('download-list');
+  const items = Object.values(activeDownloads);
+  if (!items.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><h3>No downloads</h3><p>Start a download from the Browse tab.</p></div>';
+    return;
+  }
+
+  // Sort: active first, then newest
+  items.sort((a, b) => {
+    const order = {queued:0,connecting:0,downloading:0,error:1,cancelled:2,complete:3};
+    return (order[a.status]||0) - (order[b.status]||0);
+  });
+
+  list.innerHTML = '';
+  items.forEach(d => list.appendChild(makeDlCard(d)));
+}
+
+function makeDlCard(d) {
+  const card = document.createElement('div');
+  card.className = 'dl-card';
+
+  const pct = d.total > 0 ? Math.round((d.progress / d.total) * 100) : 0;
+  const progStr = d.total > 0
+    ? `${fmtBytes(d.progress)} / ${fmtBytes(d.total)} (${pct}%)`
+    : d.progress > 0 ? fmtBytes(d.progress) : '';
+  const speedStr = d.speed_bps > 0 ? ` · ${fmtBytes(d.speed_bps)}/s` : '';
+  const barClass = d.status === 'complete' ? 'complete' : d.status === 'error' ? 'error' : '';
+
+  card.innerHTML = `
+    <div class="dl-header">
+      <div>
+        <div class="dl-name">${escHtml(d.filename)}</div>
+        <div class="dl-model">${escHtml(d.model_id)}</div>
+      </div>
+      <span class="dl-status ${d.status}">${d.status}</span>
+    </div>
+    ${d.status === 'error' ? `<div class="alert error-msg" style="margin-bottom:8px">${escHtml(d.error||'')}</div>` : ''}
+    <div class="progress-bar-wrap">
+      <div class="progress-bar ${barClass}" style="width:${pct}%"></div>
+    </div>
+    <div class="dl-footer">
+      <div class="dl-stats">${progStr}${speedStr}</div>
+      ${['downloading','queued','connecting'].includes(d.status)
+        ? `<button class="btn danger sm" onclick="cancelDownload('${d.task_id}')">Cancel</button>` : ''}
+      ${d.status === 'complete'
+        ? `<span style="font-size:0.8rem;color:var(--green)">✓ Saved to ${escHtml(d.path)}</span>` : ''}
+    </div>
+  `;
+  return card;
+}
+
+async function cancelDownload(taskId) {
+  await fetch(`/api/download/${taskId}`, { method: 'DELETE' });
+  if (activeDownloads[taskId]) activeDownloads[taskId].status = 'cancelled';
+  renderDownloads();
+  updateDlBadge();
+}
+
+// ── My Models ─────────────────────────────────────────────────────────────────
+async function loadMyModels() {
+  const container = document.getElementById('models-container');
+  const pathEl = document.getElementById('models-path');
+  container.innerHTML = '<div class="skeleton" style="height:60px"></div>';
+
+  try {
+    const resp = await fetch('/api/downloaded');
+    const data = await resp.json();
+    pathEl.textContent = '📁 ' + data.models_dir;
+
+    if (!data.files.length) {
+      container.innerHTML = '<div class="empty"><div class="empty-icon">📂</div><h3>No models yet</h3><p>Download a model from the Browse tab.</p></div>';
+      return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'models-table';
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>Filename</th><th>Quantization</th><th>Size</th><th>Path</th><th></th>
+        </tr></thead>
+        <tbody id="models-tbody"></tbody>
+      </table>
+    `;
+    container.innerHTML = '';
+    container.appendChild(wrap);
+
+    const tbody = document.getElementById('models-tbody');
+    data.files.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight:600">${escHtml(f.filename)}</td>
+        <td><span class="quant-badge">${escHtml(f.quantization)}</span></td>
+        <td style="white-space:nowrap">${f.size_gb} GB</td>
+        <td><span class="path-text">${escHtml(f.path)}</span></td>
+        <td>
+          <button class="btn danger sm" onclick="deleteModel('${escHtml(f.filename)}', this)">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (e) {
+    container.innerHTML = `<div class="alert error-msg">Failed to load: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function deleteModel(filename, btn) {
+  if (!confirm(`Delete ${filename}?\nThis cannot be undone.`)) return;
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+  try {
+    const resp = await fetch(`/api/downloaded/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    if (resp.ok) loadMyModels();
+    else btn.textContent = 'Error';
+  } catch (e) {
+    btn.textContent = 'Error';
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const resp = await fetch('/api/settings');
+    const data = await resp.json();
+    document.getElementById('s-models-dir').value = data.models_dir || '';
+    if (data.hf_token_set) {
+      document.getElementById('s-token').placeholder = '(token is set — paste new one to replace)';
+    }
+  } catch (e) {}
+}
+
+async function saveSettings() {
+  const msg = document.getElementById('settings-msg');
+  const dir = document.getElementById('s-models-dir').value.trim();
+  const token = document.getElementById('s-token').value.trim();
+
+  if (!dir) { msg.innerHTML = '<div class="alert error-msg">Models directory is required.</div>'; return; }
+
+  try {
+    const body = { models_dir: dir };
+    if (token) body.hf_token = token;
+
+    const resp = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (resp.ok) {
+      msg.innerHTML = '<div class="alert success">Settings saved.</div>';
+      if (token) document.getElementById('s-token').value = '';
+      setTimeout(() => msg.innerHTML = '', 3000);
+    } else {
+      msg.innerHTML = '<div class="alert error-msg">Failed to save settings.</div>';
+    }
+  } catch (e) {
+    msg.innerHTML = `<div class="alert error-msg">${escHtml(e.message)}</div>`;
+  }
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function closeModal() {
+  if (modalInterval) { clearInterval(modalInterval); modalInterval = null; }
+  const hasActive = Object.values(activeDownloads).some(d =>
+    ['queued','connecting','downloading'].includes(d.status)
+  );
+  if (hasActive) showToast('Download continues in the background — check the Downloads tab.');
+  document.getElementById('file-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:8px;font-size:0.85rem;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 3500);
+}
+document.getElementById('file-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtBytes(b) {
+  if (b >= 1e9) return (b/1e9).toFixed(2) + ' GB';
+  if (b >= 1e6) return (b/1e6).toFixed(1) + ' MB';
+  return (b/1e3).toFixed(0) + ' KB';
+}
+function showEmpty(el, title, msg) {
+  el.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>${escHtml(title)}</h3><p>${escHtml(msg)}</p></div>`;
+}
+function showError(el, msg) {
+  el.innerHTML = `<div class="alert error-msg" style="grid-column:1/-1">${escHtml(msg)}</div>`;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadModels(); // Load popular models on page open
+
+// Restore any in-progress downloads from the server
+(async () => {
+  try {
+    const resp = await fetch('/api/downloads');
+    const list = await resp.json();
+    list.forEach(d => {
+      if (!['complete','error','cancelled'].includes(d.status)) {
+        activeDownloads[d.task_id] = d;
+        trackDownload(d.task_id, d.filename);
+      } else {
+        activeDownloads[d.task_id] = d;
+      }
+    });
+    updateDlBadge();
+    renderDownloads();
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
